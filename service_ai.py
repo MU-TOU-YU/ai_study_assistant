@@ -1,13 +1,13 @@
 import os
-import time
-from openai import OpenAI,APIConnectionError,APITimeoutError,RateLimitError
+import asyncio
+from openai import AsyncOpenAI,APIConnectionError,APITimeoutError,RateLimitError
 from dotenv import load_dotenv
 
 load_dotenv()
 
 api_key=os.getenv("DeepSeek_API_KEY")
 
-client=OpenAI(
+client=AsyncOpenAI(
     api_key=api_key,
     base_url="https://api.deepseek.com"
 )
@@ -16,11 +16,12 @@ client=OpenAI(
 MAX_RETRIES = 2
 RETRY_DELAY = 1.5
 
-def call_deepseek(prompt:str)->str:
+async def call_deepseek(prompt:str)->str:
     last_error=None
+    
     for attempt in range(MAX_RETRIES + 1):
         try:
-            response=client.chat.completions.create(
+            response = await client.chat.completions.create(
                 model="deepseek-chat",
                 messages=[
                     {
@@ -49,19 +50,19 @@ def call_deepseek(prompt:str)->str:
            if attempt < MAX_RETRIES:
                sleep_time = RETRY_DELAY * (attempt + 1)
                print(f"[RETRY]第{attempt+1}次重试，等待{sleep_time}秒，原因{type(e).__name__}")
-               time.sleep(sleep_time)
+               await asyncio.sleep(sleep_time)
            else:
                raise RuntimeError(
                    f"DeepSeek API 调用失败,已重试{MAX_RETRIES}次，最后错误：{last_error}"
-               )from last_error
+               ) from last_error
         
         except Exception as e:
             raise RuntimeError(
                 f"DeepSeek API 调用失败:{type(e).__name__} - {e}"
-            )from e       
+            ) from e       
     
     
-def summarize_text(text:str)->str:
+async def summarize_text(text:str)->str:
     prompt=f"""请用中文总结下面这份学习资料。
 
 要求：
@@ -73,10 +74,10 @@ def summarize_text(text:str)->str:
 {text[:8000]}
 """
 
-    return call_deepseek(prompt) 
+    return await call_deepseek(prompt) 
 
 
-def generate_question(text:str)->str:
+async def generate_question(text:str)->str:
     prompt=f"""请根据下面的学习资料生成 5 道面试题。
 
 要求：
@@ -88,10 +89,10 @@ def generate_question(text:str)->str:
 {text[:8000]}
 """
 
-    return call_deepseek(prompt)
+    return await call_deepseek(prompt)
 
 
-def generate_study_plan(text:str)->str:
+async def generate_study_plan(text:str)->str:
     prompt=f"""请根据下面的学习资料，为初学者生成一份学习计划。
 
 要求：
@@ -103,4 +104,4 @@ def generate_study_plan(text:str)->str:
 {text[:8000]}
 """
 
-    return call_deepseek(prompt)
+    return await call_deepseek(prompt)

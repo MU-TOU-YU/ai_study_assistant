@@ -16,7 +16,7 @@ class Uploadtext:
     byte_size:int
 
 
-async def get_text_from_upload(file:UploadFile)->str:
+async def get_text_from_upload(file:UploadFile)->Uploadtext:
     
     filename=get_save_filename(file)
     content=await file.read()
@@ -54,7 +54,7 @@ def detection_coding(content:bytes)->tuple[str,str]:
             
     raise ValueError(
         f"无法解码文件内容。已尝试编码:{','.join(_FALLBACK_ENCODINGS)}"
-        f"文件可能是二进制格式或损坏的文本文件"
+        f",文件可能是二进制格式或损坏的文本文件"
     )          
 
 
