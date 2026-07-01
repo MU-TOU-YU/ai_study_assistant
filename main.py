@@ -1,10 +1,13 @@
 
 from contextlib import asynccontextmanager
-from database import init_db,save_ai_record,get_ai_records,get_ai_record_by_id
-from fastapi import FastAPI,UploadFile,File,HTTPException,Request
-from service.service_ai import summarize_text,generate_question,generate_study_plan
-from utils import get_text_from_upload,build_response,validate_text_length,FileValidationError
+from database import init_db
+from fastapi import FastAPI,Request
+from utils import FileValidationError
 from fastapi.responses import JSONResponse
+
+from routers.file_mode import router as file_mode_router
+from routers.records import router as records_router
+from routers.checkpoint_mode import router as checkpoint_router
 
 
 @asynccontextmanager
@@ -46,68 +49,7 @@ def health_check():
     
     return {"status":"ok"}
 
-             
-@app.post("/summarize")
-async def summarize(file:UploadFile=File(...)):
-    uploaded=await get_text_from_upload(file)
-    validate_text=validate_text_length(uploaded.content)
-    result=await summarize_text(validate_text)
-    
-    record = await save_ai_record(uploaded.filename,"summary",result)
-    
-    return build_response(record.id,uploaded.filename,"summarize",result)
 
-
-@app.post("/question")
-async def question(file:UploadFile=File(...)):
-    uploaded=await get_text_from_upload(file)
-    validate_text=validate_text_length(uploaded.content)
-    result=await generate_question(validate_text)
-    
-    record = await save_ai_record(uploaded.filename,"question",result)
-    
-    return build_response(record.id,uploaded.filename,"generate_question",result) 
-
-    
-@app.post("/study_plan")
-async def study_plan(file:UploadFile=File(...)):
-    uploaded=await get_text_from_upload(file)
-    validate_text=validate_text_length(uploaded.content)
-    result=await generate_study_plan(validate_text)
-    
-    record = await save_ai_record(uploaded.filename,"study_plan",result)
-    
-    return build_response(record.id,uploaded.filename,"study_plan",result)
-
-
-@app.get("/records")
-async def records():
-    records=await get_ai_records()
-    
-    return[
-        {
-            "id":record.id,
-            "filename":record.filename,
-            "task_type":record.task_type,
-            "result":record.result[:20],
-            "create_at":record.create_at
-        }
-        for record in records
-    ]                 
-        
-    
-@app.get("/record/{record_id}")
-async def record_detail(record_id:int):
-    record=await get_ai_record_by_id(record_id)
-    
-    if record is None:
-        raise HTTPException(status_code=404,detail="记录不存在")
-    
-    return {
-            "id":record.id,
-            "filename":record.filename,
-            "task_type":record.task_type,
-            "result":record.result,
-            "create_at":record.create_at
-        }
-       
+app.include_router(file_mode_router,prefix="/file-mode",tags=["文件上传模式"])
+app.include_router(records_router,tags=["历史记录"])
+app.include_router(checkpoint_router,prefix="/checkpoint_mode",tags=["闯关模式"])
